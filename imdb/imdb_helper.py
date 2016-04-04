@@ -112,6 +112,8 @@ def parsetitle(title):
     return returnArray
 
 ### This function will save many titles to the MySQL database
+# INCOMPLETE
+# Needs to be more generic, create if not available, truncate if desired, etc
 def saveTitle_Batch(titledict):
     # Connect to the Database
     conn = pypyodbc.connect('DSN=moviesmysql')
@@ -138,7 +140,9 @@ def saveTitle_Batch(titledict):
     # Close the database connection
     conn.close()
 
-### This function will save many titles to the MySQL database
+### This function will save many Persons to the MySQL DB
+# INCOMPLETE
+# Needs to be more generic, create if not available, truncate if desired, etc
 def savePerson_Batch(directorDict):
     # Connect to the Database
     conn = pypyodbc.connect('DSN=moviesmysql')
@@ -165,7 +169,9 @@ def savePerson_Batch(directorDict):
     # Close the database connection
     conn.close()
 
-### This function will save many titles to the MySQL database
+### This function will save many genres to the MySQL database
+# INCOMPLETE
+# Needs to be more generic, create if not available, truncate if desired, etc
 def saveGenres(genreDict):
     # Connect to the Database
     conn = pypyodbc.connect('DSN=moviesmysql')
