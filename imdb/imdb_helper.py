@@ -107,8 +107,12 @@ def parsetitle(title):
             otherItem = found.group(0).replace('(','').replace(')','')
             localTitle = localTitle.replace(found.group(0),'')
 
+    # assign a key
+    # use title|year|dup as a unique title
+    titleKey = finalTitle + "|" + year + "|" + dupVal
+
     # Return a named array of the values we found
-    returnArray = {'title':finalTitle.strip(),'year':year,'dup':dupVal,'episode':titleEpisode,'type':titleType,'other':otherItem,'order':orderVal,'role':role,'uncredited':uncredited,'alias':alias}
+    returnArray = {'key':titleKey,'title':finalTitle,'year':year,'dup':dupVal,'episode':titleEpisode,'type':titleType,'other':otherItem,'order':orderVal,'role':role,'uncredited':uncredited,'alias':alias}
     return returnArray
 
 ### This function will save many titles to the MySQL database
