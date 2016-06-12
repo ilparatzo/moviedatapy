@@ -1,0 +1,9 @@
+
+.idea/
+.sql/
+
+test*.*
+*.log
+__pycache__
+*.BAK
+db*.sql
