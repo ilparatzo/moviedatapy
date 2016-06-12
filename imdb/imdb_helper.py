@@ -1,119 +1,143 @@
 import pypyodbc
 import re
+import logging
 
-### This function parses a title in the IMDB Database
+# Standard RE forms for parsing titles
+title_form_1 = '(.+)'
+year_form_1 = '[(]([0-9?]{4,4})[/]*([IVXL]{1,4})*[)]'
+type_form_1 = '[ ]*(\((V|TV|VG)\))*[ ]*'
+episode_form_1 = '[ ]*({(.*)})*[ ]*'
+job_form_1 = '[ ]*(\((?!as )(.*?)\))?[ ]*'
+alias_form_1 = '[ ]*(\((as )(.*?)\))?[ ]*'
+role_form_1 = '[ ]*(\[(.*?)\])?[ ]*'
+order_form_1 = '[ ]*(<([0-9]*?)>)?[ ]*'
+
+# List of columns for each type of save
+column_data = {
+    'Movie': ['imdb_title', 'id', 'title', 'year', 'dup', 'type', 'episode_full', 'primary_language']
+}
+
+
 def parsetitle(title):
-    localTitle = title
-    finalTitle = ''
-    titleType = "Movie"
-    titleEpisode = ""
+    # Initialize a couple variables
+    local_title = title
+    title_type = "Movie"
 
-    # Look for different title formats
-    # Made for Video, Made for TV, Video Game, TV or Movie (default)
-    if title.find('(V)') >= 0:
-        titleType = "Made for Video"
-        localTitle = localTitle.replace(' (V)', '')
-    if title.find('(TV)') >= 0:
-        titleType = "Made for TV"
-        localTitle = localTitle.replace(' (TV)', '')
-    if title.find('(VG)') >= 0:
-        titleType = "Video Game"
-        localTitle = localTitle.replace(' (VG)', '')
-    if title.count('"') >= 2:
-        titleType = "TV"
-        localTitle = localTitle.replace('"', '')
+    # Initialize a semi-blank return array
+    return_array = {'key': '', 'title': title, 'year': '', 'dup': '',
+                    'episode': '', 'type': 'Movie', 'other': '',
+                    'order': '', 'role': '', 'uncredited': 0, 'alias': '',
+                    'primary_language':''}
 
-    # Now look for the year and any duplicate value
-    # For Movie/Show duplicates, the year will be followed by /<Roman Numeral>
-    found = re.search('\([0-9?]{4,4}[/IV]{0,4}\)',title)
-    year = ''
-    dupVal = '0'
-    yearIndex = -1
-    if not(found == None):
-        tmpYear = found.group(0)
-        yearIndex = title.find(tmpYear) # Store the Index so other searches can start here
-        if tmpYear.find('/') > 0:
-            # This is a duplicate, store that too
-            year = re.search('[0-9?]{4,4}', tmpYear).group(0)
-            dupVal = tmpYear[tmpYear.find('/')+1:].replace(')','')
-        else:
-            # No duplicate, just grab the year
-            year = tmpYear.replace('(','').replace(')','')
-            dupVal = '0'
-        localTitle = localTitle.replace(tmpYear,'')
+    # Parse with the title parser
+    title_data = re.search(title_form_1 + '[ ]+' + year_form_1 + type_form_1 +
+                           episode_form_1 + job_form_1 + alias_form_1 + role_form_1 + order_form_1, local_title)
+
+    # for i in range(0, len(title_data.groups())):
+    #     print(str(i) + ":" + title_data.group(i))
+
+    # Did it match?
+    if title_data is None:
+        # Error, it didn't match
+        # return "error"
+        logging.error("TITLE PARSE FAILED: " + title)
     else:
-        # Every Title should have a year, this isn't good
-        # Should throw an error or something
-        year = '0'
-        dupVal = '0'
+        # Parse what we found
+        # First, what kind of title is it? (default was movie)
+        if title_data.group(5) == "V":
+            title_type = "Made for Video"
+        elif title_data.group(5) == "TV":
+            title_type = "Made for TV"
+        elif title_data.group(5) == "VG":
+            title_type = "Video Game"
+        elif title_data.group(1).count('"') >= 2:
+            title_type = "TV"
 
-    # the title of the movie is the text prior to the year
-    finalTitle = title[0:yearIndex].strip()
+        # Save the year
+        year = title_data.group(2).replace('????', '0')
 
-    # See if there is an episode title/info
-    # INCOMPLETE
-    # This is hacked together.  We find the first { and last } and grab everything in between
-    epIndex = title.find('{')
-    if epIndex >= 0:
-        # Get the Episode Title information
-        # Everything between the {}
-        titleEpisode = title[title.find('{'):title.find('}')+1]
-        localTitle = localTitle.replace(titleEpisode,'')
-        titleEpisode = titleEpisode.replace('{','').replace('}','')
+        # Was there a duplicate value with the year?
+        dup_val = title_data.group(3) if title_data.group(3) is not None else ''
 
-    # Look for an alias (as XXX)
-    # Anything in () that starts with "as "
-    alias = ''
-    found = re.search('\(as (.*?)\)',title.replace(titleEpisode,'')[yearIndex+2:])
-    if not(found == None):
-        alias = found.group(0).replace('(as ', '').replace(')', '')
-        localTitle = localTitle.replace(found.group(0),'')
+        # Title was value 1 (remove any quotes if it was a TV show
+        final_title = title_data.group(1).replace('"', '')
 
-    # See if any role is uncredited
-    uncredited = 0
-    if localTitle.find('(uncredited)') > 0:
-        uncredited = 1
-        localTitle.replace('(uncredited)', '')
+        # Episode Information (this is incomplete, needs more parsing)
+        title_episode = title_data.group(7) if title_data.group(7) is not None else ''
+
+        # Alias information
+        alias = title_data.group(12) if title_data.group(12) is not None else ''
+
+        # Role
+        role = title_data.group(14) if title_data.group(14) is not None else ''
+
+        # Order
+        order_val = title_data.group(16) if title_data.group(16) is not None else ''
+
+        # Other Item (job typically)
+        other_item = title_data.group(9) if title_data.group(9) is not None else ''
+
+        # Uncredited?
+        uncredited = 0
+        if other_item == "uncredited":
+            uncredited = 1
+
+        # assign a key
+        # use title|year|dup as a unique title
+        title_key = final_title + "|" + year + "|" + dup_val
+
+        # Return a named array of the values we found
+        return_array = {'key': title_key, 'title': final_title, 'year': year, 'dup': dup_val,
+                        'episode_full': title_episode, 'type': title_type, 'other': other_item,
+                        'order': order_val, 'role': role, 'uncredited': uncredited, 'alias': alias,
+                        'primary_language':''}
+
+    return return_array
 
 
-    # Check for an order
-    # This is mainly for actors and actresses, order displayed in IMDB
-    # A number within <>
-    orderVal = '0'
-    if yearIndex > 0:
-        found = re.search('<(.*?)>', title[yearIndex + 2:])
-        if not (found == None):
-            orderVal = found.group(0).replace('<', '').replace('>', '')
-            localTitle = localTitle.replace(found.group(0), '')
+def create_inserts(data_dict, data_type, file_name):
+    # Initialize a file with the requested name
+    dbfile = '.sql/tmp/db-inserts_' + str(file_name) + '.sql'
+    sqlfile = open(dbfile, 'w')
 
-    # Check for a role
-    # This is for actors/actresses and is the role played
-    # Anything between []
-    role = ''
-    if yearIndex > 0:
-        found = re.search('\[(.*?)\]', title[yearIndex + 2:])
-        if not (found == None):
-            role = found.group(0).replace('[', '').replace(']', '')
-            localTitle = localTitle.replace(found.group(0), '')
+    # Grab the column list
+    my_columns = column_data[data_type]
 
-    # Remove any remaining () items still in the title
-    # This is where localTitle comes in, since we've been cleansing it
-    # These are typically the specific jobs for crew
-    # Put them in the returned dict as 'other'
-    otherItem = ''
-    if yearIndex > 0:
-        found = re.search('\((.*?)\)',localTitle)
-        if not(found == None):
-            otherItem = found.group(0).replace('(','').replace(')','')
-            localTitle = localTitle.replace(found.group(0),'')
+    # Start building the query
+    query = 'insert into movies.' + my_columns[0] + " ("
+    for column in my_columns:
+        if not(column == my_columns[0]):
+            query += column + ", "
 
-    # assign a key
-    # use title|year|dup as a unique title
-    titleKey = finalTitle + "|" + year + "|" + dupVal
+    # Remove the last column
+    query = query[:-2]
+    query += ") values ("
 
-    # Return a named array of the values we found
-    returnArray = {'key':titleKey,'title':finalTitle,'year':year,'dup':dupVal,'episode':titleEpisode,'type':titleType,'other':otherItem,'order':orderVal,'role':role,'uncredited':uncredited,'alias':alias}
-    return returnArray
+    # Initialize an array of the insert strings
+    insert_list = []
+
+    # Run through every row in the data
+    for row in data_dict:
+        # Initialize the query to what was already built
+        my_query = query
+        # Run through every column we need to save
+        for column in my_columns:
+            if not (column == my_columns[0]):
+                my_query += "'" + str(row[column]).replace("'", "''").replace('\\', '\\\\') + "', "
+
+        # Remove the last comma and end the parend
+        my_query = my_query[:-2]
+        my_query += ');' + "\n"
+
+        # Write this out to the file
+        insert_list.append(my_query)
+
+    # Write out all the lines
+    sqlfile.writelines(insert_list)
+
+    # Close the file
+    sqlfile.close()
+
 
 ### This function will save many titles to the MySQL database
 # INCOMPLETE
