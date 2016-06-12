@@ -1,13 +1,14 @@
-import imdb_helper
+from imdb import imdb_helper
 import pandas
 import re
 
 # A list of languages that will be recognized in the Language processor
 languageList = ['Arabic','Bulgarian','Chinese','Croatian','Dutch','English','Finnish','French','German','Greek','Hebrew','Hindi','Hungarian','Icelandic','Italian','Japanese','Korean','Norwegian','Persian','Polish','Portuguese','Punjabi','Romanian','Russian','Spanish','Swedish','Turkish','Ukrainian','Mandarin','Cantonese']
 
+
 # Function to load all titles from a movie file
 # Returns a pandas dataframe
-def loadTitles(typeToFind, fileToLoad, idStart):
+def load_titles(typeToFind, fileToLoad, idStart):
     movies = open(fileToLoad, "rt", encoding="utf-8")
 
     # state is 0, waiting, until we find "MOVIES LIST"
@@ -21,8 +22,8 @@ def loadTitles(typeToFind, fileToLoad, idStart):
                 state = 1
         elif state == 1:
             # We're reading movies
-            # skip ='s and empties
-            if not(line[0:2] == "==" or len(line) <= 3):
+            # skip ='s and empties and -'s
+            if not(line[0:2] == "==" or line[0:2] == "--" or len(line) <= 3):
                 # Grab the title, everything prior to the first tab
                 mainTitle = line[0:line.find('\t')]
                 mainTitle = mainTitle.replace('{{SUSPENDED}}','{SUSPENDED}')
