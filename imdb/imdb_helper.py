@@ -14,7 +14,10 @@ order_form_1 = '[ ]*(<([0-9]*?)>)?[ ]*'
 
 # List of columns for each type of save
 column_data = {
-    'Movie': ['imdb_title', 'id', 'title', 'year', 'dup', 'type', 'episode_full', 'primary_language']
+    'Movie': ['imdb_title', 'id', 'title', 'year', 'dup', 'type', 'episode_full', 'primary_language'],
+    'Genre': ['imdb_title_genre', 'title_id', 'genre', 'line'],
+    'Person': ['imdb_title_person', 'title_id', 'person_source', 'person_type', 'order_val', 'name',
+               'dup', 'alias', 'role', 'uncredited']
 }
 
 
@@ -26,8 +29,7 @@ def parsetitle(title):
     # Initialize a semi-blank return array
     return_array = {'key': '', 'title': title, 'year': '', 'dup': '',
                     'episode': '', 'type': 'Movie', 'other': '',
-                    'order': '', 'role': '', 'uncredited': 0, 'alias': '',
-                    'primary_language':''}
+                    'order': '', 'role': '', 'uncredited': 0, 'alias': ''}
 
     # Parse with the title parser
     title_data = re.search(title_form_1 + '[ ]+' + year_form_1 + type_form_1 +
@@ -89,8 +91,7 @@ def parsetitle(title):
         # Return a named array of the values we found
         return_array = {'key': title_key, 'title': final_title, 'year': year, 'dup': dup_val,
                         'episode_full': title_episode, 'type': title_type, 'other': other_item,
-                        'order': order_val, 'role': role, 'uncredited': uncredited, 'alias': alias,
-                        'primary_language':''}
+                        'order': order_val, 'role': role, 'uncredited': uncredited, 'alias': alias}
 
     return return_array
 
@@ -98,7 +99,7 @@ def parsetitle(title):
 def create_inserts(data_dict, data_type, file_name):
     # Initialize a file with the requested name
     dbfile = '.sql/tmp/db-inserts_' + str(file_name) + '.sql'
-    sqlfile = open(dbfile, 'w')
+    sqlfile = open(dbfile, 'w', encoding='utf-8')
 
     # Grab the column list
     my_columns = column_data[data_type]
@@ -137,91 +138,3 @@ def create_inserts(data_dict, data_type, file_name):
 
     # Close the file
     sqlfile.close()
-
-
-### This function will save many titles to the MySQL database
-# INCOMPLETE
-# Needs to be more generic, create if not available, truncate if desired, etc
-def saveTitle_Batch(titledict):
-    # Connect to the Database
-    conn = pypyodbc.connect('DSN=moviesmysql')
-    cur = conn.cursor()
-
-    # print("Save Time")
-    query = 'insert into movies.imdb_title (id, title, year, type, episode_full, primary_language, dup) values '
-    lastKey = ''
-    for row in titledict:
-        if not(lastKey == row['key']):
-            query += " ('" + str(row['id']) + "', '"+ row['title'].replace("'","''").replace('\\','\\\\') + "', '" + str(row['year']).replace('????','0') + "', '" + row['type'] + "', '" + row['episode'].replace("'", "''").replace('\\', '\\\\') + "', '" + row['language'] + "', '" + row['dup'] + "'),"
-            lastKey = row['key']
-
-    # print(query[0:len(query)-1])
-    # remove last ,
-    query = query[0:len(query)-1]
-
-    #print(query)
-
-    # Save to the database
-    cur.execute(query)
-    cur.commit()
-
-    # Close the database connection
-    conn.close()
-
-### This function will save many Persons to the MySQL DB
-# INCOMPLETE
-# Needs to be more generic, create if not available, truncate if desired, etc
-def savePerson_Batch(directorDict):
-    # Connect to the Database
-    conn = pypyodbc.connect('DSN=moviesmysql')
-    cur = conn.cursor()
-
-    # print("Save Time")
-    query = 'insert into movies.imdb_title_person (title_id, person_source, person_type, name, dup, role, order_val, alias, uncredited) values '
-    lastKey = ''
-    for row in directorDict:
-        # if not(lastKey == row['key']):
-        query += " ('" + str(row['id']) + "', '"+ row['source'] + "', '" + row['person_type'].replace("'","''") + "', '" + str(row['name']).replace("'", "''") + "', '" + row['dup_p'] + "', '" + str(row['role_p']).replace("'", "''") + "', '" + str(row['order_p']) + "', '" + row['alias_p'].replace("'","''") + "', '" + str(row['uncredited_p']) + "'),"
-        lastKey = row['key']
-
-    # print(query[0:len(query)-1])
-    # remove last ,
-    query = query[0:len(query)-1]
-
-    #print(query)
-
-    # Save to the database
-    cur.execute(query)
-    cur.commit()
-
-    # Close the database connection
-    conn.close()
-
-### This function will save many genres to the MySQL database
-# INCOMPLETE
-# Needs to be more generic, create if not available, truncate if desired, etc
-def saveGenres(genreDict):
-    # Connect to the Database
-    conn = pypyodbc.connect('DSN=moviesmysql')
-    cur = conn.cursor()
-
-    # print("Save Time")
-    query = 'insert into movies.imdb_title_genre (title_id, line, genre) values '
-    lastKey = ''
-    for row in genreDict:
-        # if not(lastKey == row['key']):
-        query += " ('" + str(row['id']) + "', '" + str(row['line']) + "', '" + row['genre'] + "'),"
-        lastKey = row['key']
-
-    # print(query[0:len(query)-1])
-    # remove last ,
-    query = query[0:len(query)-1]
-
-    #print(query)
-
-    # Save to the database
-    cur.execute(query)
-    cur.commit()
-
-    # Close the database connection
-    conn.close()
