@@ -4,7 +4,7 @@ import logging
 
 # Standard RE forms for parsing titles
 title_form_1 = '(.+)'
-year_form_1 = '[(]([0-9?]{4,4})[/]*([IVXL]{1,4})*[)]'
+year_form_1 = '[(]([0-9?]{4,4})[/]*([IVXL]{1,6})*[)]'
 type_form_1 = '[ ]*(\((V|TV|VG)\))*[ ]*'
 episode_form_1 = '[ ]*({(.*)})*[ ]*'
 job_form_1 = '[ ]*(\((?!as )(.*?)\))?[ ]*'
