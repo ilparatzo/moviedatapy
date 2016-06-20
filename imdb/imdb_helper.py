@@ -11,6 +11,7 @@ job_form_1 = '[ ]*(\((?!as )(.*?)\))?[ ]*'
 alias_form_1 = '[ ]*(\((as )(.*?)\))?[ ]*'
 role_form_1 = '[ ]*(\[(.*?)\])?[ ]*'
 order_form_1 = '[ ]*(<([0-9]*?)>)?[ ]*'
+biz_form_1 = '([A-Z]{3,3})[ ]([0-9,]*)[ ]*([(]([A-Z]+)[)])?[ ]*([(]([0-9A-Za-z ]+)[)])?'
 
 # List of columns for each type of save
 column_data = {
@@ -138,3 +139,49 @@ def create_inserts(data_dict, data_type, file_name):
 
     # Close the file
     sqlfile.close()
+
+
+# Parses business data
+def parse_business(biz_string):
+    # setup the return dictionary
+    return_val = {'currency': None,
+                  'value': None,
+                  'country': None,
+                  'value_date': None
+                  }
+
+    # Run the business form against the string provided
+    biz_data = re.search(biz_form_1, biz_string)
+
+    # Did it match?
+    if biz_data is None:
+        # Error, it didn't match
+        # return "error"
+        logging.error("BUSINESS PARSE FAILED: " + biz_string)
+    else:
+        # Parse what we found
+        # Currency
+        currency = biz_data.group(1)
+
+        # Value found
+        if biz_data.group(2) is not None:
+            value = float(biz_data.group(2).replace(',', ''))
+        else:
+            value = None
+
+        # Country
+        country = biz_data.group(4)
+
+        # Date
+        value_date = biz_data.group(6)
+
+        # set the return value
+        return_val = {'currency': currency,
+                      'value': value,
+                      'country': country,
+                      'value_date': value_date
+                      }
+
+    # return what we found (if anything)
+    return return_val
+

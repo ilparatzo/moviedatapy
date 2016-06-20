@@ -1,7 +1,8 @@
 from imdb import imdb_helper
 import pandas
 import re
-
+import sqltools
+import logging
 
 # Function to load all titles from a movie file
 # Returns a pandas dataframe
@@ -214,3 +215,134 @@ def load_persons(type_to_find, file_to_load, default_person_type, person_source)
                     full_list.append(tmp_data)
 
     return pandas.DataFrame(full_list)
+
+
+# Load business data
+# Budget, Weekend Gross, Gross, etc
+def load_business(type_to_find, file_to_load):
+    # START HERE
+    movies = open(file_to_load, "rt", encoding="utf8")
+
+    # state is 0, waiting, until we find "Name\t"
+    state = 0
+    full_list = []
+    curr_title = ''
+    for line in movies:
+        if state == 0:
+            # We're waiting for the right header
+            if line.find("BUSINESS") >= 0:
+                state = 1
+        elif state == 1:
+            # We're reading movies
+            # Each line can mean multiple things
+            if line[0:3] == "MV:":
+                # Movie title
+                title_data = imdb_helper.parse_title(line[4:])
+                if title_data['type'] == type_to_find:
+                    curr_title = title_data['key']
+            elif line[0:3] == "BT:" or line[0:3] == "GR" or line[0:3] == "WG" or line[0:3] == "OW":
+                # Budget, Gross, Weekend Gross, Opening Weekend
+                # Parse it
+                parsed_data = imdb_helper.parse_business(line[4:])
+
+                # Success?
+                if parsed_data['currency'] is not None and len(curr_title) > 0:
+                    # Yes, we can save it
+                    my_data = {}
+                    my_data.update({'key': curr_title})
+                    my_data.update({'biz_type': line[0:2]})
+                    my_data.update(parsed_data)
+
+                    # add it to the list
+                    full_list.append(my_data)
+
+    # Done, return them all
+    return full_list
+
+
+# Does a full reload
+# Currently includes the following files
+# movies (+languages)
+# genres
+# directors
+# producers
+# miscellaneous
+# actors
+# actresses
+def full_load(movie_file_folder):
+    if not(movie_file_folder[:-1] == "\\"):
+        movie_file_folder += "\\"
+
+    # Load the Movie Titles
+    print("Loading Movies...")
+    movie_data = load_titles("Movie", movie_file_folder + "movies.list", 0)
+    movie_data.set_index(['key'])
+
+    # Create a version of the movie data that is just key and id
+    # This is primarily for linking to other data sets to get the id
+    movie_data_ids = movie_data[['key', 'id']]
+
+    # Load their languages
+    print("Loading Languages...")
+    lang_data = load_languages("Movie", movie_file_folder + "language.list", 1)
+
+    # Join movies with their languages
+    movie_lang_data = pandas.merge(movie_data, lang_data, on='key', how='left')
+    movie_lang_data = movie_lang_data.fillna('')
+
+    # Create a file to save the Movies
+    print("Creating Movie Insert File...")
+    movie_data_dict = movie_lang_data.to_dict('records')
+    imdb_helper.create_inserts(movie_data_dict, 'Movie', 'movies')
+
+    # Consolidate the inserts to groups of 75000
+    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_movies.sql', True)
+
+    # Load the Genres
+    print("Loading Genres...")
+    genre_data = load_genres("Movie", movie_file_folder + "genres.list", 0)
+
+    # Combine genres with Movies (mainly to get the ID)
+    movie_genre_data = pandas.merge(genre_data, movie_data_ids, on='key', how='inner')
+    movie_genre_data = movie_genre_data[['id', 'genre', 'line', 'key']]
+    movie_genre_data.rename(columns={'id': 'title_id'}, inplace=True)
+
+    # Create a file to save the Movie Genres
+    print("Creating Movie Genres Insert File...")
+    movie_data_dict = movie_genre_data.to_dict('records')
+    imdb_helper.create_inserts(movie_data_dict, 'Genre', 'genres')
+
+    # Consolidate the inserts to groups of 75000
+    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_genres.sql', True)
+
+    print("Loading People...")
+    people_types = {
+        'D': {'default': 'director', 'filename': 'directors'},
+        'M': {'default': 'other', 'filename': 'miscellaneous'},
+        'AS': {'default': 'actress', 'filename': 'actresses'},
+        'AR': {'default': 'actor', 'filename': 'actors'},
+        'P': {'default': 'producer', 'filename': 'producers'}
+    }
+
+    for key, people_type in people_types.items():
+        # Load the data
+        print("Loading " + people_type['filename'] + '...')
+        person_data = load_persons("Movie",
+                                   movie_file_folder + people_type['filename'] + ".list",
+                                   people_type['default'], key)
+        # Merge people with movie data ids for the title id
+        movie_person_data = pandas.merge(person_data, movie_data_ids, on='key', how='inner')
+        movie_person_data = movie_person_data[['id', 'key', 'person_source', 'person_type', 'order_val',
+                                               'name', 'dup', 'alias', 'role', 'uncredited']]
+        movie_person_data.rename(columns={'id': 'title_id'}, inplace=True)
+
+        # Create a file to save the Movie people
+        print("Creating Movie " + people_type['filename'] + " Insert File...")
+        movie_data_dict = movie_person_data.to_dict('records')
+        imdb_helper.create_inserts(movie_data_dict, 'Person', people_type['filename'])
+
+        # Consolidate the inserts to groups of 75000
+        sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_' + people_type['filename'] + '.sql', True)
+
+    # Done!
+    print("Load Completed.")
