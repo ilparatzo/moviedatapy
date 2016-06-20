@@ -26,7 +26,7 @@ def load_titles(type_to_find, file_to_load, id_start):
                 main_title = main_title.replace('{{SUSPENDED}}', '{SUSPENDED}')
 
                 # Parse the title for all the pieces we need
-                title_data = imdb_helper.parsetitle(main_title)
+                title_data = imdb_helper.parse_title(main_title)
                 if title_data['type'] == type_to_find and len(title_data['title']) > 0:
                     # INCOMPLETE
                     # This ID is only valid during this one run
@@ -68,7 +68,7 @@ def load_languages(type_to_find, file_to_load, single_lang):
             if not(line[0:2] == "==" or len(line) <= 3):
                 # Grab the title, everything prior to the first tab
                 main_title = line[0:line.find('\t')]
-                title_data = imdb_helper.parsetitle(main_title)
+                title_data = imdb_helper.parse_title(main_title)
 
                 # Make sure it's the type we care about
                 if title_data['type'] == type_to_find:
@@ -116,7 +116,7 @@ def load_genres(type_to_find, file_to_load, single_genre):
             if not(line[0:2] == "==" or line[0:2] == '--' or len(line) <= 3):
                 # Grab the title, everything prior to the first tab
                 main_title = line[0:line.find('\t')]
-                title_data = imdb_helper.parsetitle(main_title)
+                title_data = imdb_helper.parse_title(main_title)
 
                 # New movie?
                 if last_movie != title_data['key']:
@@ -174,7 +174,7 @@ def load_persons(type_to_find, file_to_load, default_person_type, person_source)
 
                 # Title, all text after last tab
                 main_title = line[line.rfind('\t') + 1:]
-                title_data = imdb_helper.parsetitle(main_title)
+                title_data = imdb_helper.parse_title(main_title)
 
                 # Type of person listed?
                 person_type = default_person_type

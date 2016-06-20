@@ -21,7 +21,7 @@ column_data = {
 }
 
 
-def parsetitle(title):
+def parse_title(title):
     # Initialize a couple variables
     local_title = title
     title_type = "Movie"
