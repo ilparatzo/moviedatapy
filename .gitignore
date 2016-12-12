@@ -1,6 +1,7 @@
 
 .idea/
 .sql/
+.json/
 
 test*.*
 *.log
