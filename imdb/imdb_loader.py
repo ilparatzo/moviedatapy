@@ -240,7 +240,7 @@ def load_business(type_to_find, file_to_load):
                 title_data = imdb_helper.parse_title(line[4:])
                 if title_data['type'] == type_to_find:
                     curr_title = title_data['key']
-            elif line[0:3] == "BT:" or line[0:3] == "GR" or line[0:3] == "WG" or line[0:3] == "OW":
+            elif line[0:3] == "BT:" or line[0:3] == "GR:" or line[0:3] == "WG:" or line[0:3] == "OW:":
                 # Budget, Gross, Weekend Gross, Opening Weekend
                 # Parse it
                 parsed_data = imdb_helper.parse_business(line[4:])
@@ -248,7 +248,7 @@ def load_business(type_to_find, file_to_load):
                 # Success?
                 if parsed_data['currency'] is not None and len(curr_title) > 0:
                     # Yes, we can save it
-                    my_data = {}
+                    my_data = {"biz_type": line[0:2]}
                     my_data.update({'key': curr_title})
                     my_data.update({'biz_type': line[0:2]})
                     my_data.update(parsed_data)
@@ -257,7 +257,7 @@ def load_business(type_to_find, file_to_load):
                     full_list.append(my_data)
 
     # Done, return them all
-    return full_list
+    return pandas.DataFrame(full_list)
 
 
 # Does a full reload
@@ -314,6 +314,23 @@ def full_load(movie_file_folder):
 
     # Consolidate the inserts to groups of 75000
     sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_genres.sql', True)
+
+    # Load the business data
+    print("Loading Business...")
+    biz_data = load_business("Movie", movie_file_folder + "business.list")
+
+    # Combine business with Movies (mainly to get the ID)
+    movie_biz_data = pandas.merge(biz_data, movie_data_ids, on='key', how='inner')
+    movie_biz_data = movie_biz_data[['id', 'biz_type', 'currency', 'country', 'value_date', 'value']]
+    movie_biz_data.rename(columns={'id': 'title_id'}, inplace=True)
+
+    # Create a file to save the Movie Genres
+    print("Creating Movie Business Insert File...")
+    movie_data_dict = movie_biz_data.to_dict('records')
+    imdb_helper.create_inserts(movie_data_dict, 'Business', 'business')
+
+    # Consolidate the inserts to groups of 75000
+    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_business.sql', True)
 
     print("Loading People...")
     people_types = {

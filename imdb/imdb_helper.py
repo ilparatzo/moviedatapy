@@ -1,6 +1,7 @@
 import pypyodbc
 import re
 import logging
+from datetime import datetime
 
 # Standard RE forms for parsing titles
 title_form_1 = '(.+)'
@@ -17,6 +18,7 @@ biz_form_1 = '([A-Z]{3,3})[ ]([0-9,]*)[ ]*([(]([A-Z]+)[)])?[ ]*([(]([0-9A-Za-z ]
 column_data = {
     'Movie': ['imdb_title', 'id', 'title', 'year', 'dup', 'type', 'episode_full', 'primary_language'],
     'Genre': ['imdb_title_genre', 'title_id', 'genre', 'line'],
+    'Business': ['imdb_title_business', 'title_id', 'biz_type', 'currency', 'country', 'value_date', 'value'],
     'Person': ['imdb_title_person', 'title_id', 'person_source', 'person_type', 'order_val', 'name',
                'dup', 'alias', 'role', 'uncredited']
 }
@@ -125,7 +127,10 @@ def create_inserts(data_dict, data_type, file_name):
         # Run through every column we need to save
         for column in my_columns:
             if not (column == my_columns[0]):
-                my_query += "'" + str(row[column]).replace("'", "''").replace('\\', '\\\\') + "', "
+                # accomodate for nulls
+                tmp_value = 'null' if len(str(row[column])) == 0 else \
+                    "'" + str(row[column]).replace("'", "''").replace('\\', '\\\\') + "'"
+                my_query += tmp_value + ", "
 
         # Remove the last comma and end the parend
         my_query = my_query[:-2]
@@ -144,10 +149,10 @@ def create_inserts(data_dict, data_type, file_name):
 # Parses business data
 def parse_business(biz_string):
     # setup the return dictionary
-    return_val = {'currency': None,
-                  'value': None,
-                  'country': None,
-                  'value_date': None
+    return_val = {'currency': '',
+                  'value': '',
+                  'country': '',
+                  'value_date': ''
                   }
 
     # Run the business form against the string provided
@@ -170,10 +175,18 @@ def parse_business(biz_string):
             value = None
 
         # Country
-        country = biz_data.group(4)
+        country = biz_data.group(4) if biz_data.group(4) is not None else ''
 
         # Date
-        value_date = biz_data.group(6)
+        value_date = biz_data.group(6) if biz_data.group(6) is not None else ''
+        if value_date is not None:
+            if len(value_date) > 0:
+                # Convert to an appropriate string (YYYY-MM-DD)
+                try:
+                    date_object = datetime.strptime(value_date, '%d %B %Y')
+                    value_date = date_object.strftime('%Y-%m-%d')
+                except ValueError:
+                    value_date = ''
 
         # set the return value
         return_val = {'currency': currency,
