@@ -7,7 +7,7 @@ import logging
 # Function to load all titles from a movie file
 # Returns a pandas dataframe
 def load_titles(type_to_find, file_to_load, id_start):
-    movies = open(file_to_load, "rt", encoding="utf-8")
+    movies = open(file_to_load, "rt", encoding="Latin-1")
 
     # state is 0, waiting, until we find "MOVIES LIST"
     state = 0
@@ -52,7 +52,7 @@ def load_titles(type_to_find, file_to_load, id_start):
 # Returns a pandas dataframe
 def load_languages(type_to_find, file_to_load, single_lang):
     # START HERE
-    movies = open(file_to_load, "rt", encoding="utf-8")
+    movies = open(file_to_load, "rt", encoding="Latin-1")
 
     # state is 0, waiting, until we find "LANGUAGE LIST"
     state = 0
@@ -99,7 +99,7 @@ def load_languages(type_to_find, file_to_load, single_lang):
 # Returns a pandas dataframe
 def load_genres(type_to_find, file_to_load, single_genre):
     # START HERE
-    movies = open(file_to_load, "rt", encoding="utf8")
+    movies = open(file_to_load, "rt", encoding="Latin-1")
 
     # state is 0, waiting, until we find "LANGUAGE LIST"
     state = 0
@@ -151,7 +151,7 @@ def load_genres(type_to_find, file_to_load, single_genre):
 # Returns a pandas dataframe
 def load_persons(type_to_find, file_to_load, default_person_type, person_source):
     # START HERE
-    movies = open(file_to_load, "rt", encoding="utf8")
+    movies = open(file_to_load, "rt", encoding="Latin-1")
 
     # state is 0, waiting, until we find "Name\t"
     state = 0
@@ -221,7 +221,7 @@ def load_persons(type_to_find, file_to_load, default_person_type, person_source)
 # Budget, Weekend Gross, Gross, etc
 def load_business(type_to_find, file_to_load):
     # START HERE
-    movies = open(file_to_load, "rt", encoding="utf8")
+    movies = open(file_to_load, "rt", encoding="Latin-1")
 
     # state is 0, waiting, until we find "Name\t"
     state = 0
@@ -270,8 +270,8 @@ def load_business(type_to_find, file_to_load):
 # actors
 # actresses
 def full_load(movie_file_folder):
-    if not(movie_file_folder[:-1] == "\\"):
-        movie_file_folder += "\\"
+    if not(movie_file_folder[:-1] == "/"):
+        movie_file_folder += "/"
 
     # Load the Movie Titles
     print("Loading Movies...")
@@ -291,12 +291,17 @@ def full_load(movie_file_folder):
     movie_lang_data = movie_lang_data.fillna('')
 
     # Create a file to save the Movies
-    print("Creating Movie Insert File...")
+    # print("Creating Movie Insert File...")
+    # movie_data_dict = movie_lang_data.to_dict('records')
+    # imdb_helper.create_inserts(movie_data_dict, 'Movie', 'movies')
+
+    # Export the Movie data to JSON format
+    print("Creating Movie JSON File...")
     movie_data_dict = movie_lang_data.to_dict('records')
-    imdb_helper.create_inserts(movie_data_dict, 'Movie', 'movies')
+    imdb_helper.create_json(movie_data_dict, 'Movie', 'movies')
 
     # Consolidate the inserts to groups of 75000
-    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_movies.sql', True)
+    # sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_movies.sql', True)
 
     # Load the Genres
     print("Loading Genres...")
@@ -307,13 +312,14 @@ def full_load(movie_file_folder):
     movie_genre_data = movie_genre_data[['id', 'genre', 'line', 'key']]
     movie_genre_data.rename(columns={'id': 'title_id'}, inplace=True)
 
-    # Create a file to save the Movie Genres
+    # Export the Genre data to JSON format
     print("Creating Movie Genres Insert File...")
     movie_data_dict = movie_genre_data.to_dict('records')
-    imdb_helper.create_inserts(movie_data_dict, 'Genre', 'genres')
+    # imdb_helper.create_inserts(movie_data_dict, 'Genre', 'genres')
+    imdb_helper.create_json(movie_data_dict, 'Genre', 'genres')
 
     # Consolidate the inserts to groups of 75000
-    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_genres.sql', True)
+    # sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_genres.sql', True)
 
     # Load the business data
     print("Loading Business...")
@@ -325,12 +331,13 @@ def full_load(movie_file_folder):
     movie_biz_data.rename(columns={'id': 'title_id'}, inplace=True)
 
     # Create a file to save the Movie Genres
-    print("Creating Movie Business Insert File...")
+    print("Creating Movie Business JSON File...")
     movie_data_dict = movie_biz_data.to_dict('records')
-    imdb_helper.create_inserts(movie_data_dict, 'Business', 'business')
+    # imdb_helper.create_inserts(movie_data_dict, 'Business', 'business')
+    imdb_helper.create_json(movie_data_dict, 'Business', 'business')
 
     # Consolidate the inserts to groups of 75000
-    sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_business.sql', True)
+    # sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_business.sql', True)
 
     print("Loading People...")
     people_types = {
@@ -354,12 +361,13 @@ def full_load(movie_file_folder):
         movie_person_data.rename(columns={'id': 'title_id'}, inplace=True)
 
         # Create a file to save the Movie people
-        print("Creating Movie " + people_type['filename'] + " Insert File...")
+        print("Creating Movie " + people_type['filename'] + " JSON File...")
         movie_data_dict = movie_person_data.to_dict('records')
-        imdb_helper.create_inserts(movie_data_dict, 'Person', people_type['filename'])
+        # imdb_helper.create_inserts(movie_data_dict, 'Person', people_type['filename'])
+        imdb_helper.create_json(movie_data_dict, 'Person', people_type['filename'])
 
         # Consolidate the inserts to groups of 75000
-        sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_' + people_type['filename'] + '.sql', True)
+        # sqltools.insert_consolidate('.sql/tmp', '.sql/batch_insert_' + people_type['filename'] + '.sql', True)
 
     # Done!
     print("Load Completed.")
