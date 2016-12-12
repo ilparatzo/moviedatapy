@@ -7,8 +7,9 @@ logfile = 'movie-logger.log'
 open(logfile, 'w').close()
 logging.basicConfig(filename=logfile, level=logging.INFO)
 
+
 # Do a full load
-imdb_loader.full_load("f:\\development\\movie_files\\")
+imdb_loader.full_load("/data/development/movie_files")
 # vals = imdb_loader.load_business("Movie", "f:\\development\\movie_files\\business.list")
 
 # i = 1
