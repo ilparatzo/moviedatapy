@@ -1,6 +1,7 @@
 import pypyodbc
 import re
 import logging
+import json
 from datetime import datetime
 
 # Standard RE forms for parsing titles
@@ -97,6 +98,34 @@ def parse_title(title):
                         'order': order_val, 'role': role, 'uncredited': uncredited, 'alias': alias}
 
     return return_array
+
+
+def create_json(data_dict, data_type, file_name):
+    # Initialize a file with the requested name
+    dbfile = '.json/tmp/json_files_' + str(file_name) + '.json'
+    jsonfile = open(dbfile, 'w', encoding='utf-8')
+
+    # Grab the column list
+    my_columns = column_data[data_type]
+
+    all_rows = []
+    # Run through every row in the data
+    for row in data_dict:
+        # Run through every column we need to save
+        # A new dict to store the columns we want
+        tmp_dict = {}
+        for column in my_columns:
+            if not (column == my_columns[0]):
+                tmp_dict.update({column: row[column]})
+
+        # Make it JSON and add to our array
+        all_rows.append(json.dumps(tmp_dict, separators=(',', ':')))
+
+    # Write out all the lines
+    jsonfile.writelines('\n'.join(all_rows) + '\n')
+
+    # Close the file
+    jsonfile.close()
 
 
 def create_inserts(data_dict, data_type, file_name):
