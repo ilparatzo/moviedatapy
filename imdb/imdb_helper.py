@@ -118,6 +118,9 @@ def create_json(data_dict, data_type, file_name):
             if not (column == my_columns[0]):
                 tmp_dict.update({column: row[column]})
 
+        # Add a column for data type
+        tmp_dict.update({"imdb_data_type": data_type})
+
         # Make it JSON and add to our array
         all_rows.append(json.dumps(tmp_dict, separators=(',', ':')))
 
